@@ -1,11 +1,17 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Pool } = require("pg");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PrismaPg } = require("@prisma/adapter-pg");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PrismaClient } = require("@prisma/client");
 
 if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL environment variable is required for seeding.");
 }
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     const event = await prisma.event.upsert({
@@ -56,4 +62,5 @@ main()
     })
     .finally(async () => {
         await prisma.$disconnect();
+        await pool.end();
     });
