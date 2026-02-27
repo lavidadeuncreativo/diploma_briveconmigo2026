@@ -43,7 +43,7 @@ model Token {
 model Certificate {
   id        String   @id @default(cuid())
   eventId   String
-  tokenId   String   @unique
+  tokenId   String?  @unique
   fullName  String
   company   String?
   template  String   // "A" | "B"
@@ -51,6 +51,6 @@ model Certificate {
   pngPath   String
   createdAt DateTime @default(now())
 
-  event Event @relation(fields: [eventId], references: [id])
-  token Token @relation(fields: [tokenId], references: [id])
+  event Event  @relation(fields: [eventId], references: [id])
+  token Token? @relation(fields: [tokenId], references: [id])
 }

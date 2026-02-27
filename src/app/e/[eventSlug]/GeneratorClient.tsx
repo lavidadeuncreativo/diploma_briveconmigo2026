@@ -521,7 +521,23 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
     // Validate token on mount
     useEffect(() => {
         if (!tokenStr) {
-            setAppState("invalid");
+            // Public access: fetch event info directly
+            (async () => {
+                try {
+                    console.log(`[Client] No token, fetching event: "${eventSlug}"`);
+                    const res = await fetch(`/api/event/${eventSlug}`);
+                    if (!res.ok) {
+                        setAppState("invalid");
+                        return;
+                    }
+                    const data = await res.json();
+                    setEvent(data);
+                    setAppState("ready");
+                } catch (err) {
+                    console.error("[Client] Public event fetch error:", err);
+                    setAppState("invalid");
+                }
+            })();
             return;
         }
 
@@ -563,7 +579,7 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tokenStr]);
+    }, [tokenStr, eventSlug]);
 
     const handleGenerate = useCallback(async () => {
         if (!fullName.trim()) {
@@ -579,7 +595,8 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    token: tokenStr,
+                    token: tokenStr || undefined,
+                    eventSlug: !tokenStr ? eventSlug : undefined,
                     template: selectedTemplate,
                     fullName: fullName.trim(),
                     company: company.trim() || undefined,
