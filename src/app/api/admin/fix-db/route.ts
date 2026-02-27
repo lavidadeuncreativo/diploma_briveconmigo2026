@@ -6,20 +6,30 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
     try {
-        // SQL to add the email column if it doesn't exist
-        // We use model name "Certificate" which Prisma maps to the same name in PG
-        await prisma.$executeRawUnsafe(`
-            DO $$ 
-            BEGIN 
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Certificate' AND column_name='email') THEN 
-                    ALTER TABLE "Certificate" ADD COLUMN "email" TEXT; 
-                END IF; 
-            END $$;
+        // 1. Inspect existing columns
+        const columns: any[] = await prisma.$queryRawUnsafe(`
+            SELECT column_name, is_nullable, column_default 
+            FROM information_schema.columns 
+            WHERE table_name = 'Certificate';
         `);
+
+        // 2. Fix missing columns
+        const columnNames = columns.map(c => c.column_name);
+
+        if (!columnNames.includes('email')) {
+            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN "email" TEXT;');
+        }
+        if (!columnNames.includes('company')) {
+            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN "company" TEXT;');
+        }
+
+        // 3. Ensure tokenId is nullable (in case it was messed up)
+        await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ALTER COLUMN "tokenId" DROP NOT NULL;');
 
         return NextResponse.json({
             success: true,
-            message: "Database schema updated successfully. The 'email' column has been added."
+            columns: columns,
+            message: "Database check complete. Added 'email' and 'company' if missing. Ensured 'tokenId' is nullable."
         });
     } catch (error: any) {
         console.error("[fix-db] Error:", error);
