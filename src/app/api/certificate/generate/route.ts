@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
             data: {
                 id: certificateId,
                 eventId: event.id,
-                tokenId: tokenRecord.id,
+                tokenId: tokenRecord?.id ?? null,
                 fullName: fullName.trim(),
                 company: company?.trim() || null,
                 template,
@@ -102,10 +102,12 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        await prisma.token.update({
-            where: { id: tokenRecord.id },
-            data: { status: "USED", usedAt: new Date() },
-        });
+        if (tokenRecord) {
+            await prisma.token.update({
+                where: { id: tokenRecord.id },
+                data: { status: "USED", usedAt: new Date() },
+            });
+        }
 
         return NextResponse.json({
             certificateId: certificate.id,
