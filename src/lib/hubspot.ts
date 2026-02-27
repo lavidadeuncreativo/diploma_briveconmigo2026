@@ -1,8 +1,8 @@
 // src/lib/hubspot.ts
 
 /**
- * Synchronizes a contact to HubSpot using a Private App Token.
- * It will create the contact if it doesn't exist or update it if it does.
+ * Synchronizes a contact to HubSpot using the Forms Submission API (v3).
+ * This method does NOT require a Private App Token, only the Portal ID and Form ID.
  */
 export async function syncContactToHubSpot(data: {
     email: string;
@@ -11,44 +11,44 @@ export async function syncContactToHubSpot(data: {
     company?: string;
     eventTitle?: string;
 }) {
-    const token = process.env.HUBSPOT_PRIVATE_APP_TOKEN;
+    const portalId = process.env.HUBSPOT_PORTAL_ID;
+    const formId = process.env.HUBSPOT_FORM_ID;
 
-    if (!token) {
-        console.warn("[HubSpot] HUBSPOT_PRIVATE_APP_TOKEN is not set. Skipping sync.");
+    if (!portalId || !formId) {
+        console.warn("[HubSpot] HUBSPOT_PORTAL_ID or HUBSPOT_FORM_ID is not set. Skipping sync.");
         return;
     }
 
     const { email, firstName, lastName, company, eventTitle } = data;
 
     try {
-        const response = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/upsert", {
+        const response = await fetch(`https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-                idProperty: "email",
-                objectWriteProperties: {
-                    email,
-                    firstname: firstName,
-                    lastname: lastName,
-                    company: company,
-                    // If you have a custom property for the event, you can add it here
-                    // last_event_attended: eventTitle 
-                },
+                fields: [
+                    { name: "email", value: email },
+                    { name: "firstname", value: firstName || "" },
+                    { name: "lastname", value: lastName || "" },
+                    { name: "company", value: company || "" },
+                ],
+                context: {
+                    pageUri: process.env.APP_BASE_URL || "https://brive.mx",
+                    pageName: `Diploma Generator - ${eventTitle}`,
+                }
             }),
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error("[HubSpot] Error syncing contact:", errorData);
+            console.error("[HubSpot] Error submitting form:", errorData);
             return;
         }
 
-        const result = await response.json();
-        console.log("[HubSpot] Contact synced successfully:", result.id);
+        console.log("[HubSpot] Form submitted successfully");
     } catch (error) {
-        console.error("[HubSpot] Network error during sync:", error);
+        console.error("[HubSpot] Network error during form submission:", error);
     }
 }
