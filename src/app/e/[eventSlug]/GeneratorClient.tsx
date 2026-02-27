@@ -21,6 +21,7 @@ interface EventInfo {
 interface ValidateResponse {
     valid: boolean;
     reason?: string;
+    message?: string; // Added for diagnostics
     email?: string;
     prefillName?: string | null;
     alreadyGenerated?: boolean;
@@ -526,10 +527,13 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
 
         (async () => {
             try {
+                console.log(`[Client] Validating token: "${tokenStr}"`);
                 const res = await fetch(`/api/token/validate?t=${encodeURIComponent(tokenStr)}`);
                 const data: ValidateResponse = await res.json();
+                console.log("[Client] Validation response:", data);
 
                 if (!data.valid) {
+                    console.warn("[Client] Token invalid:", data.reason, data.message);
                     setAppState("invalid");
                     return;
                 }
@@ -553,12 +557,13 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                 } else {
                     setAppState("ready");
                 }
-            } catch {
+            } catch (err) {
+                console.error("[Client] Validation error:", err);
                 setAppState("invalid");
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [tokenStr]);
 
     const handleGenerate = useCallback(async () => {
         if (!fullName.trim()) {
@@ -722,6 +727,32 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
         );
     }
 
+    if (appState === "error") {
+        return (
+            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                <div style={{ textAlign: "center", maxWidth: 400 }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                    <h2 style={{ fontFamily: "Space Grotesk", fontSize: 24, color: "#0B1220", marginBottom: 12 }}>Ups, algo salió mal</h2>
+                    <p style={{ color: "rgba(11,18,32,0.6)", marginBottom: 24 }}>{errorMsg}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            background: "#0B1220",
+                            color: "white",
+                            padding: "12px 24px",
+                            borderRadius: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            border: "none"
+                        }}
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     // ─── Main Generator UI ─────────────────────────────────────────────────────
 
     return (
@@ -798,301 +829,175 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                             fontSize: "clamp(28px, 4vw, 48px)",
                             fontWeight: 700,
                             color: "#0B1220",
-                            letterSpacing: "-1.5px",
+                            marginBottom: 8,
+                            letterSpacing: "-1px",
                             lineHeight: 1.1,
-                            marginBottom: 12,
                         }}
                     >
-                        Genera tu diploma al instante
+                        {event?.title}
                     </h1>
-                    <p style={{
-                        fontSize: 16,
-                        color: "rgba(11,18,32,0.55)",
-                        maxWidth: 520,
-                        margin: "0 auto",
-                        lineHeight: 1.6,
-                        fontFamily: "'Inter', sans-serif",
-                    }}>
-                        Selecciona el diseño, confirma tu nombre y descárgalo en PDF.<br />
-                        Compártelo en LinkedIn o WhatsApp en segundos.
+                    <p style={{ color: "rgba(11,18,32,0.45)", fontSize: 16, fontFamily: "'Inter', sans-serif" }}>
+                        {event?.subtitle}
                     </p>
-                    {event && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.2 }}
-                            style={{
-                                marginTop: 20,
-                                display: "inline-flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: 6,
-                                background: "white",
-                                border: "1px solid rgba(11,18,32,0.08)",
-                                borderRadius: 16,
-                                padding: "14px 24px",
-                            }}
-                        >
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "#2EE59D", letterSpacing: "1.5px", textTransform: "uppercase", background: "#0B1220", padding: "3px 10px", borderRadius: 100 }}>
-                                Workshop
-                            </span>
-                            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, color: "#0B1220", textAlign: "center", maxWidth: 400 }}>
-                                {event.title}
-                            </span>
-                            {event.date && <span style={{ fontSize: 13, color: "rgba(11,18,32,0.40)" }}>{event.date}</span>}
-                        </motion.div>
-                    )}
                 </motion.div>
 
-                {/* Two column layout */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 24,
-                        alignItems: "start",
-                    }}
-                >
-                    {/* LEFT: form panel */}
+                {/* Generator Grid */}
+                <div style={{
+                    display: "flex",
+                    flexDirection: window.innerWidth < 900 ? "column-reverse" : "row",
+                    gap: 40,
+                    alignItems: "flex-start",
+                }}>
+                    {/* Form side */}
                     <motion.div
-                        initial={{ opacity: 0, x: -12 }}
+                        initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.45, delay: 0.1, ease: "easeOut" }}
+                        transition={{ delay: 0.2 }}
                         style={{
+                            flex: 1,
+                            width: "100%",
+                            maxWidth: 480,
                             background: "white",
-                            border: "1px solid rgba(11,18,32,0.08)",
                             borderRadius: 24,
+                            border: "1px solid rgba(11,18,32,0.08)",
                             padding: "32px 28px",
+                            boxShadow: "0 10px 40px rgba(11,18,32,0.04)",
                             display: "flex",
                             flexDirection: "column",
-                            gap: 28,
+                            gap: 24,
                         }}
                     >
-                        {/* Step 1: Template selection */}
-                        <div>
-                            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "1.5px", color: "rgba(11,18,32,0.40)", textTransform: "uppercase", marginBottom: 12, fontFamily: "'Space Grotesk', sans-serif" }}>
-                                Paso 1 — Elige tu diseño
-                            </p>
-                            <div style={{ display: "flex", gap: 10 }}>
+                        {/* Step 1: Design */}
+                        <section>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: "rgba(11,18,32,0.35)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 16, fontFamily: "'Inter', sans-serif" }}>
+                                1. Elige tu diseño
+                            </h3>
+                            <div style={{ display: "flex", gap: 12 }}>
                                 <TemplateCard id="A" selected={selectedTemplate === "A"} onClick={() => setSelectedTemplate("A")} />
                                 <TemplateCard id="B" selected={selectedTemplate === "B"} onClick={() => setSelectedTemplate("B")} />
                             </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div style={{ height: 1, background: "rgba(11,18,32,0.06)" }} />
+                        </section>
 
                         {/* Step 2: Form */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "1.5px", color: "rgba(11,18,32,0.40)", textTransform: "uppercase", marginBottom: 0, fontFamily: "'Space Grotesk', sans-serif" }}>
-                                Paso 2 — Confirma tus datos
-                            </p>
+                        <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 700, color: "rgba(11,18,32,0.35)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4, fontFamily: "'Inter', sans-serif" }}>
+                                2. Valida tus datos
+                            </h3>
 
-                            {/* Email display */}
-                            <div style={{ fontSize: 12, color: "rgba(11,18,32,0.40)", padding: "8px 12px", background: "rgba(11,18,32,0.03)", borderRadius: 10, fontFamily: "'Inter', sans-serif" }}>
-                                📧 <span style={{ fontWeight: 500 }}>Email:</span> {email}
-                            </div>
-
-                            {/* Full name */}
-                            <div>
-                                <label style={{ fontSize: 13, fontWeight: 500, color: "#0B1220", marginBottom: 6, display: "block", fontFamily: "'Inter', sans-serif" }}>
-                                    Nombre completo *
-                                </label>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 600, color: "#0B1220", fontFamily: "'Inter', sans-serif" }}>Nombre Completo</label>
                                 <input
                                     type="text"
+                                    placeholder="Ej. María García"
                                     value={fullName}
-                                    onChange={e => { setFullName(e.target.value); if (nameError) setNameError(""); }}
-                                    placeholder="Ej: María González López"
-                                    disabled={appState === "generating" || appState === "done"}
+                                    onChange={e => setFullName(e.target.value)}
                                     style={{
-                                        width: "100%",
-                                        padding: "12px 14px",
+                                        padding: "12px 16px",
                                         borderRadius: 12,
-                                        border: nameError ? "1.5px solid #e53e3e" : "1.5px solid rgba(11,18,32,0.12)",
+                                        border: nameError ? "1.5px solid #ff4d4d" : "1px solid rgba(11,18,32,0.12)",
                                         fontSize: 15,
                                         fontFamily: "'Inter', sans-serif",
-                                        color: "#0B1220",
-                                        background: appState === "done" ? "rgba(11,18,32,0.02)" : "white",
                                         outline: "none",
-                                        transition: "border-color 0.15s",
+                                        background: "rgba(11,18,32,0.02)",
+                                        transition: "all 0.15s ease",
                                     }}
-                                    onFocus={e => !nameError && (e.target.style.borderColor = "#2EE59D")}
-                                    onBlur={e => !nameError && (e.target.style.borderColor = "rgba(11,18,32,0.12)")}
+                                    onFocus={e => e.currentTarget.style.border = "1.5px solid #2EE59D"}
+                                    onBlur={e => e.currentTarget.style.border = nameError ? "1.5px solid #ff4d4d" : "1px solid rgba(11,18,32,0.12)"}
                                 />
-                                {nameError && (
-                                    <motion.p
-                                        initial={{ opacity: 0, y: -4 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        style={{ fontSize: 12, color: "#e53e3e", marginTop: 4, fontFamily: "'Inter', sans-serif" }}
-                                    >
-                                        {nameError}
-                                    </motion.p>
-                                )}
-                                <p style={{ fontSize: 11, color: "rgba(11,18,32,0.40)", marginTop: 4, fontFamily: "'Inter', sans-serif" }}>
-                                    ¿Tu nombre tiene acentos? Inclúyelos: así aparecerá en el diploma.
-                                </p>
+                                {nameError && <span style={{ fontSize: 11, color: "#ff4d4d", fontWeight: 500 }}>{nameError}</span>}
                             </div>
 
-                            {/* Company */}
-                            <div>
-                                <label style={{ fontSize: 13, fontWeight: 500, color: "#0B1220", marginBottom: 6, display: "block", fontFamily: "'Inter', sans-serif" }}>
-                                    Empresa <span style={{ color: "rgba(11,18,32,0.35)" }}>(opcional)</span>
-                                </label>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 600, color: "#0B1220", fontFamily: "'Inter', sans-serif" }}>Empresa (Opcional)</label>
                                 <input
                                     type="text"
+                                    placeholder="Ej. Brivé"
                                     value={company}
                                     onChange={e => setCompany(e.target.value)}
-                                    placeholder="Ej: Acme Corp"
-                                    disabled={appState === "generating" || appState === "done"}
                                     style={{
-                                        width: "100%",
-                                        padding: "12px 14px",
+                                        padding: "12px 16px",
                                         borderRadius: 12,
-                                        border: "1.5px solid rgba(11,18,32,0.12)",
+                                        border: "1px solid rgba(11,18,32,0.12)",
                                         fontSize: 15,
                                         fontFamily: "'Inter', sans-serif",
-                                        color: "#0B1220",
-                                        background: appState === "done" ? "rgba(11,18,32,0.02)" : "white",
                                         outline: "none",
-                                        transition: "border-color 0.15s",
+                                        background: "rgba(11,18,32,0.02)",
                                     }}
-                                    onFocus={e => (e.target.style.borderColor = "#2EE59D")}
-                                    onBlur={e => (e.target.style.borderColor = "rgba(11,18,32,0.12)")}
                                 />
                             </div>
-                        </div>
 
-                        {/* CTA */}
-                        {appState !== "done" && (
-                            <div>
-                                <motion.button
-                                    onClick={handleGenerate}
-                                    disabled={appState === "generating"}
-                                    whileHover={appState !== "generating" ? { scale: 1.02 } : {}}
-                                    whileTap={appState !== "generating" ? { scale: 0.98 } : {}}
-                                    style={{
-                                        width: "100%",
-                                        padding: "16px 24px",
-                                        background: appState === "generating" ? "rgba(11,18,32,0.55)" : "#0B1220",
-                                        color: "white",
-                                        borderRadius: 14,
-                                        border: "none",
-                                        fontSize: 16,
-                                        fontWeight: 600,
-                                        cursor: appState === "generating" ? "not-allowed" : "pointer",
-                                        fontFamily: "'Space Grotesk', sans-serif",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        gap: 10,
-                                        transition: "background 0.2s",
-                                        letterSpacing: "-0.3px",
-                                    }}
-                                >
-                                    {appState === "generating" ? (
-                                        <>
-                                            <motion.div
-                                                style={{
-                                                    width: 18,
-                                                    height: 18,
-                                                    borderRadius: "50%",
-                                                    border: "2.5px solid rgba(255,255,255,0.25)",
-                                                    borderTopColor: "white",
-                                                }}
-                                                animate={{ rotate: 360 }}
-                                                transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-                                            />
-                                            Generando…
-                                        </>
-                                    ) : (
-                                        <>✦ Generar diploma</>
-                                    )}
-                                </motion.button>
-                                <p style={{ fontSize: 11, color: "rgba(11,18,32,0.35)", textAlign: "center", marginTop: 10, fontFamily: "'Inter', sans-serif", lineHeight: 1.5 }}>
-                                    Tu enlace es personal. Solo podrás generar el diploma para este evento.
-                                </p>
+                            <div style={{
+                                marginTop: 8,
+                                padding: "12px",
+                                background: "rgba(46,229,157,0.05)",
+                                border: "1px dashed rgba(46,229,157,0.3)",
+                                borderRadius: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10
+                            }}>
+                                <div style={{ fontSize: 18 }}>📧</div>
+                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                    <span style={{ fontSize: 10, color: "rgba(11,18,32,0.4)", fontWeight: 700, textTransform: "uppercase" }}>Email registrado</span>
+                                    <span style={{ fontSize: 13, color: "#0B1220", fontWeight: 500 }}>{email}</span>
+                                </div>
                             </div>
-                        )}
+                        </section>
 
-                        {/* Error state */}
-                        {appState === "error" && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                style={{
-                                    padding: "14px 16px",
-                                    background: "rgba(229,62,62,0.06)",
-                                    border: "1px solid rgba(229,62,62,0.20)",
-                                    borderRadius: 12,
-                                }}
-                            >
-                                <p style={{ fontSize: 13, color: "#c53030", fontFamily: "'Inter', sans-serif", marginBottom: 8 }}>
-                                    {errorMsg}
-                                </p>
-                                <button
-                                    onClick={() => setAppState("ready")}
-                                    style={{
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        color: "#c53030",
-                                        background: "none",
-                                        border: "none",
-                                        cursor: "pointer",
-                                        padding: 0,
-                                        fontFamily: "'Inter', sans-serif",
-                                    }}
-                                >
-                                    Intentar de nuevo →
-                                </button>
-                            </motion.div>
-                        )}
-
-                        {/* Success: Action buttons */}
-                        {appState === "done" && result && event && (
-                            <ActionButtons result={result} event={event} onCopy={() => setToast("Copiado ✅")} />
-                        )}
+                        {/* Step 3: Generate */}
+                        <motion.button
+                            onClick={handleGenerate}
+                            disabled={appState === "generating"}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            style={{
+                                background: "#0B1220",
+                                color: "white",
+                                border: "none",
+                                padding: "16px",
+                                borderRadius: 14,
+                                fontSize: 16,
+                                fontWeight: 700,
+                                fontFamily: "'Space Grotesk', sans-serif",
+                                cursor: appState === "generating" ? "not-allowed" : "pointer",
+                                opacity: appState === "generating" ? 0.7 : 1,
+                                boxShadow: "0 12px 24px rgba(11,18,32,0.2)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 10,
+                            }}
+                        >
+                            {appState === "generating" ? (
+                                <>
+                                    <motion.div
+                                        style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#2EE59D" }}
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                                    />
+                                    Generando...
+                                </>
+                            ) : (
+                                <>Generar mi diploma <span>✨</span></>
+                            )}
+                        </motion.button>
                     </motion.div>
 
-                    {/* RIGHT: preview panel */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 12 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.45, delay: 0.15, ease: "easeOut" }}
-                        style={{
-                            background: "white",
-                            border: "1px solid rgba(11,18,32,0.08)",
-                            borderRadius: 24,
-                            overflow: "hidden",
-                            display: "flex",
-                            flexDirection: "column",
-                            minHeight: 360,
-                        }}
-                    >
-                        <div style={{
-                            padding: "16px 20px",
-                            borderBottom: "1px solid rgba(11,18,32,0.06)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                        }}>
-                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "rgba(11,18,32,0.12)" }} />
-                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "rgba(11,18,32,0.12)" }} />
-                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "rgba(11,18,32,0.12)" }} />
-                            <span style={{ fontSize: 12, color: "rgba(11,18,32,0.35)", marginLeft: 8, fontFamily: "'Inter', sans-serif" }}>
-                                Vista previa del diploma
-                            </span>
-                        </div>
-                        <PreviewPanel
-                            state={appState}
-                            pngUrl={result?.pngUrl}
-                            selectedTemplate={selectedTemplate}
-                        />
-                    </motion.div>
-                </div>
-            </div>
+                    {/* Preview side */}
+                    <div style={{ flex: 1.2, width: "100%" }}>
+                        <PreviewPanel state={appState} pngUrl={result?.pngUrl} selectedTemplate={selectedTemplate} />
+                    </div >
+                </div >
+            </div >
 
-            {/* Toast */}
+            {/* Footer */}
+            <footer style={{ padding: "40px", textAlign: "center", opacity: 0.4 }}>
+                <p style={{ fontSize: 12, color: "#0B1220", fontFamily: "'Inter', sans-serif" }}>
+                    &copy; 2026 Brivé. Todos los derechos reservados.
+                </p>
+            </footer>
+
             {toast && <Toast message={toast} onDone={() => setToast("")} />}
-        </div>
+        </div >
     );
 }
