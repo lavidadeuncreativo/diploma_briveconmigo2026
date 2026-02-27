@@ -1,0 +1,56 @@
+// This is your Prisma schema file
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  title      String
+  subtitle   String?
+  date       String
+  hours      String?
+  instructor String?
+  location   String?
+  createdAt  DateTime @default(now())
+
+  tokens       Token[]
+  certificates Certificate[]
+}
+
+model Token {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  email       String
+  prefillName String?
+  eventId     String
+  status      String   @default("ACTIVE") // ACTIVE | USED | EXPIRED
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  event        Event        @relation(fields: [eventId], references: [id])
+  certificate  Certificate?
+}
+
+model Certificate {
+  id        String   @id @default(cuid())
+  eventId   String
+  tokenId   String   @unique
+  fullName  String
+  company   String?
+  template  String   // "A" | "B"
+  pdfPath   String
+  pngPath   String
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  token Token @relation(fields: [tokenId], references: [id])
+}
