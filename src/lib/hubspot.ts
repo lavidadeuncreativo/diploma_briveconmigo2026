@@ -1,4 +1,5 @@
 // src/lib/hubspot.ts
+// Build trigger: 2026-02-27 - HubSpot Forms Integration
 
 /**
  * Synchronizes a contact to HubSpot using the Forms Submission API (v3).
