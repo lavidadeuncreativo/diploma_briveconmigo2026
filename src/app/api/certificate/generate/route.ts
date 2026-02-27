@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCertificate } from "@/lib/certificateGenerator";
 
+export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 seconds for Puppeteer / chromium-min
 
 export async function POST(req: NextRequest) {

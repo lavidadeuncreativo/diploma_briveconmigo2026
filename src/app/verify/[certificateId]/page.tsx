@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import VerifyClient from "./VerifyClient";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
     params: Promise<{ certificateId: string }>;
 }
@@ -21,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         return { title: "Diploma no encontrado – Brivé" };
     }
 
-    const pngUrl = `${baseUrl}${cert.pngPath}`;
+    const pngUrl = cert.pngPath.startsWith("http") ? cert.pngPath : `${baseUrl}${cert.pngPath}`;
 
     return {
         title: `Diploma – ${cert.fullName} | Brivé Conmigo 2026`,
