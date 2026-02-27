@@ -5,34 +5,41 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+    const results: any = {};
     try {
-        // 1. Inspect existing columns
+        // 1. Try to make tokenId nullable
+        try {
+            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ALTER COLUMN "tokenId" DROP NOT NULL;');
+            results.tokenIdFix = "Success (DROP NOT NULL)";
+        } catch (e: any) {
+            results.tokenIdFix = `Error: ${e.message}`;
+        }
+
+        // 2. Add columns if missing
+        try {
+            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "email" TEXT;');
+            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "company" TEXT;');
+            results.columnsFix = "Success (ADD COLUMN IF NOT EXISTS)";
+        } catch (e: any) {
+            results.columnsFix = `Error: ${e.message}`;
+        }
+
+        // 3. Inspect final state
         const columns: any[] = await prisma.$queryRawUnsafe(`
-            SELECT column_name, is_nullable, column_default 
+            SELECT column_name, is_nullable 
             FROM information_schema.columns 
-            WHERE table_name = 'Certificate';
+            WHERE table_name = 'Certificate'
+            ORDER BY column_name;
         `);
-
-        // 2. Fix missing columns
-        const columnNames = columns.map(c => c.column_name);
-
-        if (!columnNames.includes('email')) {
-            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN "email" TEXT;');
-        }
-        if (!columnNames.includes('company')) {
-            await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ADD COLUMN "company" TEXT;');
-        }
-
-        // 3. Ensure tokenId is nullable (in case it was messed up)
-        await prisma.$executeRawUnsafe('ALTER TABLE "Certificate" ALTER COLUMN "tokenId" DROP NOT NULL;');
 
         return NextResponse.json({
             success: true,
-            columns: columns,
-            message: "Database check complete. Added 'email' and 'company' if missing. Ensured 'tokenId' is nullable."
+            results,
+            columns,
+            message: "Database fix iteration complete."
         });
     } catch (error: any) {
-        console.error("[fix-db] Error:", error);
+        console.error("[fix-db] Critical Error:", error);
         return NextResponse.json({
             success: false,
             error: error.message || String(error)
