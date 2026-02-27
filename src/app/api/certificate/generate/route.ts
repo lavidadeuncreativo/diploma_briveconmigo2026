@@ -116,10 +116,13 @@ export async function POST(req: NextRequest) {
             verifyUrl: `${baseUrl}/verify/${certificate.id}`,
             alreadyGenerated: false,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("[generate] Error:", error);
         return NextResponse.json(
-            { error: "Internal server error generating certificate" },
+            {
+                error: "Error generating certificate",
+                details: error?.message || String(error)
+            },
             { status: 500 }
         );
     }
