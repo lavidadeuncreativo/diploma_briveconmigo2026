@@ -5,12 +5,6 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-    // Basic protection: check for a secret in the URL or just let it be temporary
-    const secret = req.nextUrl.searchParams.get("secret")?.trim()?.toLowerCase();
-    if (secret !== "brive2026") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     try {
         // SQL to add the email column if it doesn't exist
         // We use model name "Certificate" which Prisma maps to the same name in PG
