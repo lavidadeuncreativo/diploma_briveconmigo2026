@@ -1,16 +1,73 @@
 // src/lib/certificateGenerator.ts
-import puppeteer from "puppeteer";
 import QRCode from "qrcode";
-import path from "path";
-import fs from "fs";
 import { renderTemplateA, TemplateData } from "./templates/templateA";
 import { renderTemplateB } from "./templates/templateB";
 
-const STORAGE_DIR = path.join(process.cwd(), "storage", "certificates");
+const isProduction = process.env.NODE_ENV === "production";
 
-function ensureStorageDir() {
-    if (!fs.existsSync(STORAGE_DIR)) {
-        fs.mkdirSync(STORAGE_DIR, { recursive: true });
+async function launchBrowser() {
+    if (isProduction) {
+        // Vercel / serverless: use lightweight chromium
+        const chromium = (await import("@sparticuz/chromium-min")).default;
+        const puppeteer = (await import("puppeteer-core")).default;
+        return puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: { width: 1600, height: 1130 },
+            executablePath: await chromium.executablePath(
+                `https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar`
+            ),
+            headless: true,
+        });
+    } else {
+        // Local dev: use full Puppeteer
+        const puppeteer = await import("puppeteer");
+        return puppeteer.default.launch({
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor",
+            ],
+        });
+    }
+}
+
+async function saveFiles(
+    certificateId: string,
+    pngBuffer: Buffer,
+    pdfBuffer: Buffer
+): Promise<{ pngUrl: string; pdfUrl: string }> {
+    if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
+        // Vercel Blob in production
+        const { put } = await import("@vercel/blob");
+        const [png, pdf] = await Promise.all([
+            put(`certificates/${certificateId}.png`, pngBuffer, {
+                access: "public",
+                contentType: "image/png",
+            }),
+            put(`certificates/${certificateId}.pdf`, pdfBuffer, {
+                access: "public",
+                contentType: "application/pdf",
+            }),
+        ]);
+        return { pngUrl: png.url, pdfUrl: pdf.url };
+    } else {
+        // Local filesystem fallback
+        const path = await import("path");
+        const fs = await import("fs");
+        const STORAGE_DIR = path.join(process.cwd(), "storage", "certificates");
+        if (!fs.existsSync(STORAGE_DIR)) {
+            fs.mkdirSync(STORAGE_DIR, { recursive: true });
+        }
+        const pngPath = path.join(STORAGE_DIR, `${certificateId}.png`);
+        const pdfPath = path.join(STORAGE_DIR, `${certificateId}.pdf`);
+        fs.writeFileSync(pngPath, pngBuffer);
+        fs.writeFileSync(pdfPath, pdfBuffer);
+        return {
+            pngUrl: `/api/storage/${certificateId}.png`,
+            pdfUrl: `/api/storage/${certificateId}.pdf`,
+        };
     }
 }
 
@@ -28,9 +85,7 @@ export async function generateCertificate(params: {
         location?: string;
     };
     baseUrl: string;
-}): Promise<{ pngPath: string; pdfPath: string; pngRelative: string; pdfRelative: string }> {
-    ensureStorageDir();
-
+}): Promise<{ pngUrl: string; pdfUrl: string }> {
     const { certificateId, fullName, company, template, event, baseUrl } = params;
 
     // Generate QR code
@@ -58,54 +113,34 @@ export async function generateCertificate(params: {
             ? renderTemplateA(templateData)
             : renderTemplateB(templateData);
 
-    const pngFilename = `${certificateId}.png`;
-    const pdfFilename = `${certificateId}.pdf`;
-    const pngPath = path.join(STORAGE_DIR, pngFilename);
-    const pdfPath = path.join(STORAGE_DIR, pdfFilename);
-    const pngRelative = `/api/storage/${pngFilename}`;
-    const pdfRelative = `/api/storage/${pdfFilename}`;
+    const browser = await launchBrowser();
 
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-web-security",
-            "--disable-features=VizDisplayCompositor",
-        ],
-    });
+    let pngBuffer: Buffer;
+    let pdfBuffer: Buffer;
 
     try {
         const page = await browser.newPage();
-
-        // Set viewport to match diploma dimensions
         await page.setViewport({ width: 1600, height: 1130, deviceScaleFactor: 2 });
-
-        // Set HTML content and wait for fonts to load
         await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
-
-        // Wait extra for Google Fonts to load (if available)
         await new Promise((r) => setTimeout(r, 800));
 
-        // PNG screenshot
-        await page.screenshot({
-            path: pngPath,
+        const pngScreenshot = await page.screenshot({
             type: "png",
             clip: { x: 0, y: 0, width: 1600, height: 1130 },
             omitBackground: false,
         });
+        pngBuffer = Buffer.from(pngScreenshot);
 
-        // PDF export
-        await page.pdf({
-            path: pdfPath,
+        const pdfData = await page.pdf({
             width: "1600px",
             height: "1130px",
             printBackground: true,
             pageRanges: "1",
         });
+        pdfBuffer = Buffer.from(pdfData);
     } finally {
         await browser.close();
     }
 
-    return { pngPath, pdfPath, pngRelative, pdfRelative };
+    return saveFiles(certificateId, pngBuffer, pdfBuffer);
 }

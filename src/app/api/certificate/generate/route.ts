@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCertificate } from "@/lib/certificateGenerator";
 
-export const maxDuration = 60; // Allow up to 60 seconds for Puppeteer
+export const maxDuration = 60; // 60 seconds for Puppeteer / chromium-min
 
 export async function POST(req: NextRequest) {
     try {
@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid template. Must be A or B" }, { status: 400 });
         }
 
-        // Fetch token
         const tokenRecord = await prisma.token.findUnique({
             where: { token: tokenStr },
             include: { event: true, certificate: true },
@@ -55,12 +54,11 @@ export async function POST(req: NextRequest) {
         const event = tokenRecord.event;
         const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
 
-        // Create a placeholder certificate ID
         const { v4: uuidv4 } = await import("uuid");
         const certificateId = uuidv4();
 
-        // Generate PNG + PDF
-        const { pngRelative, pdfRelative } = await generateCertificate({
+        // Generate PNG + PDF (Vercel Blob or local)
+        const { pngUrl, pdfUrl } = await generateCertificate({
             certificateId,
             fullName: fullName.trim(),
             company: company?.trim() || undefined,
@@ -76,7 +74,6 @@ export async function POST(req: NextRequest) {
             baseUrl,
         });
 
-        // Create Certificate record
         const certificate = await prisma.certificate.create({
             data: {
                 id: certificateId,
@@ -85,12 +82,11 @@ export async function POST(req: NextRequest) {
                 fullName: fullName.trim(),
                 company: company?.trim() || null,
                 template,
-                pdfPath: pdfRelative,
-                pngPath: pngRelative,
+                pdfPath: pdfUrl,
+                pngPath: pngUrl,
             },
         });
 
-        // Mark token as USED
         await prisma.token.update({
             where: { id: tokenRecord.id },
             data: { status: "USED", usedAt: new Date() },
@@ -98,8 +94,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             certificateId: certificate.id,
-            pdfUrl: pdfRelative,
-            pngUrl: pngRelative,
+            pdfUrl,
+            pngUrl,
             verifyUrl: `${baseUrl}/verify/${certificate.id}`,
             alreadyGenerated: false,
         });

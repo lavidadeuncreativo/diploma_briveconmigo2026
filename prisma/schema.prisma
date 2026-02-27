@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Event {
@@ -26,15 +26,15 @@ model Event {
 }
 
 model Token {
-  id          String   @id @default(cuid())
-  token       String   @unique
+  id          String    @id @default(cuid())
+  token       String    @unique
   email       String
   prefillName String?
   eventId     String
-  status      String   @default("ACTIVE") // ACTIVE | USED | EXPIRED
+  status      String    @default("ACTIVE") // ACTIVE | USED | EXPIRED
   usedAt      DateTime?
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   event        Event        @relation(fields: [eventId], references: [id])
   certificate  Certificate?
