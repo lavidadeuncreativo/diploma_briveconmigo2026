@@ -14,9 +14,30 @@ export async function GET(
     }
 
     try {
-        const event = await prisma.event.findUnique({
+        let event = await prisma.event.findUnique({
             where: { slug },
         });
+
+        // Auto-seed: If this is the main workshop and it's missing, create it
+        if (!event && slug === "workshop-evaluacion-360") {
+            try {
+                event = await prisma.event.create({
+                    data: {
+                        slug: "workshop-evaluacion-360",
+                        title: "Workshop: Cómo convertir la evaluación 360° en decisiones reales de talento",
+                        subtitle: "Del diagnóstico al desarrollo de talento",
+                        date: "15 de marzo de 2026",
+                        hours: "3 horas",
+                        instructor: "Equipo Brivé",
+                        location: "Online",
+                    },
+                });
+                console.log("[API] Auto-seeded workshop event");
+            } catch (seedError) {
+                console.warn("[API] Seed parallel race or error:", seedError);
+                event = await prisma.event.findUnique({ where: { slug } });
+            }
+        }
 
         if (!event) {
             return NextResponse.json({ error: "Event not found" }, { status: 404 });
