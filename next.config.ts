@@ -1,17 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["puppeteer", "@sparticuz/chromium-min", "puppeteer-core"],
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      // Don't bundle native modules
-      config.externals = config.externals || [];
-      if (Array.isArray(config.externals)) {
-        config.externals.push("puppeteer", "better-sqlite3", "@sparticuz/chromium-min");
-      }
-    }
-    return config;
-  },
+  // Mark these packages as server-only externals — works with both Turbopack and webpack
+  serverExternalPackages: [
+    "puppeteer",
+    "puppeteer-core",
+    "@sparticuz/chromium-min",
+    "better-sqlite3",
+    "@prisma/adapter-better-sqlite3",
+    "pg",
+  ],
 };
 
 export default nextConfig;
