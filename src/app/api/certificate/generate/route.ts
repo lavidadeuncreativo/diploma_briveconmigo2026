@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCertificate } from "@/lib/certificateGenerator";
+import { syncContactToHubSpot } from "@/lib/hubspot";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 seconds for Puppeteer / chromium-min
@@ -9,7 +10,7 @@ export const maxDuration = 60; // 60 seconds for Puppeteer / chromium-min
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { token: tokenStr, eventSlug, template, fullName, company } = body;
+        const { token: tokenStr, eventSlug, template, fullName, email: guestEmail, company } = body;
 
         if ((!tokenStr && !eventSlug) || !template || !fullName) {
             return NextResponse.json(
@@ -65,6 +66,10 @@ export async function POST(req: NextRequest) {
             if (!event) {
                 return NextResponse.json({ error: "Event not found" }, { status: 404 });
             }
+
+            if (!guestEmail) {
+                return NextResponse.json({ error: "Email is required for guest generation" }, { status: 400 });
+            }
         }
 
         const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
@@ -95,12 +100,27 @@ export async function POST(req: NextRequest) {
                 eventId: event.id,
                 tokenId: tokenRecord?.id ?? null,
                 fullName: fullName.trim(),
+                email: tokenRecord?.email || guestEmail || null,
                 company: company?.trim() || null,
                 template,
                 pdfPath: pdfUrl,
                 pngPath: pngUrl,
             },
         });
+
+        // Sync with HubSpot async
+        const finalEmail = tokenRecord?.email || guestEmail;
+        if (finalEmail) {
+            const [firstName, ...lastNameParts] = fullName.trim().split(" ");
+            const lastName = lastNameParts.join(" ");
+            syncContactToHubSpot({
+                email: finalEmail,
+                firstName,
+                lastName: lastName || undefined,
+                company: company?.trim() || undefined,
+                eventTitle: event.title,
+            }).catch(err => console.error("[HubSpot Sync Error]", err));
+        }
 
         if (tokenRecord) {
             await prisma.token.update({

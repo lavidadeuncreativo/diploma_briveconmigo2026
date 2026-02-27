@@ -45,6 +45,7 @@ model Certificate {
   eventId   String
   tokenId   String?  @unique
   fullName  String
+  email     String?  // New field for guest emails
   company   String?
   template  String   // "A" | "B"
   pdfPath   String

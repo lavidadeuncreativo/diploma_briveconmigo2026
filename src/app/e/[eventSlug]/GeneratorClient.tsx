@@ -517,6 +517,7 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
     const [errorMsg, setErrorMsg] = useState<string>("");
     const [toast, setToast] = useState<string>("");
     const [nameError, setNameError] = useState<string>("");
+    const [emailError, setEmailError] = useState<string>("");
 
     // Validate token on mount
     useEffect(() => {
@@ -587,6 +588,17 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
             return;
         }
         setNameError("");
+
+        if (!tokenStr && !email.trim()) {
+            setEmailError("Por favor ingresa tu correo electrónico.");
+            return;
+        }
+        if (!tokenStr && email.trim() && !email.includes("@")) {
+            setEmailError("Por favor ingresa un correo válido.");
+            return;
+        }
+        setEmailError("");
+
         trackEvent("certificate_generate_click");
         setAppState("generating");
 
@@ -599,6 +611,7 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                     eventSlug: !tokenStr ? eventSlug : undefined,
                     template: selectedTemplate,
                     fullName: fullName.trim(),
+                    email: !tokenStr ? email.trim() : undefined,
                     company: company.trim() || undefined,
                 }),
             });
@@ -943,21 +956,47 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                                 />
                             </div>
 
-                            <div style={{
-                                marginTop: 8,
-                                padding: "12px",
-                                background: "rgba(46,229,157,0.05)",
-                                border: "1px dashed rgba(46,229,157,0.3)",
-                                borderRadius: 12,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10
-                            }}>
-                                <div style={{ fontSize: 18 }}>📧</div>
-                                <div style={{ display: "flex", flexDirection: "column" }}>
-                                    <span style={{ fontSize: 10, color: "rgba(11,18,32,0.4)", fontWeight: 700, textTransform: "uppercase" }}>Email registrado</span>
-                                    <span style={{ fontSize: 13, color: "#0B1220", fontWeight: 500 }}>{email}</span>
-                                </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 600, color: "#0B1220", fontFamily: "'Inter', sans-serif" }}>Correo Electrónico</label>
+                                {tokenStr ? (
+                                    <div style={{
+                                        padding: "12px 16px",
+                                        background: "rgba(46,229,157,0.05)",
+                                        border: "1px dashed rgba(46,229,157,0.3)",
+                                        borderRadius: 12,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 10
+                                    }}>
+                                        <div style={{ fontSize: 18 }}>📧</div>
+                                        <div style={{ display: "flex", flexDirection: "column" }}>
+                                            <span style={{ fontSize: 10, color: "rgba(11,18,32,0.4)", fontWeight: 700, textTransform: "uppercase" }}>Email registrado</span>
+                                            <span style={{ fontSize: 13, color: "#0B1220", fontWeight: 500 }}>{email}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <input
+                                            type="email"
+                                            placeholder="Ej. maria@ejemplo.com"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            style={{
+                                                padding: "12px 16px",
+                                                borderRadius: 12,
+                                                border: emailError ? "1.5px solid #ff4d4d" : "1px solid rgba(11,18,32,0.12)",
+                                                fontSize: 15,
+                                                fontFamily: "'Inter', sans-serif",
+                                                outline: "none",
+                                                background: "rgba(11,18,32,0.02)",
+                                                transition: "all 0.15s ease",
+                                            }}
+                                            onFocus={e => e.currentTarget.style.border = "1.5px solid #2EE59D"}
+                                            onBlur={e => e.currentTarget.style.border = emailError ? "1.5px solid #ff4d4d" : "1px solid rgba(11,18,32,0.12)"}
+                                        />
+                                        {emailError && <span style={{ fontSize: 11, color: "#ff4d4d", fontWeight: 500 }}>{emailError}</span>}
+                                    </>
+                                )}
                             </div>
                         </section>
 
