@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
     // Basic protection: check for a secret in the URL or just let it be temporary
-    const secret = req.nextUrl.searchParams.get("secret");
-    if (secret !== "brive-fix-2026") {
+    const secret = req.nextUrl.searchParams.get("secret")?.trim()?.toLowerCase();
+    if (secret !== "brive2026") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
