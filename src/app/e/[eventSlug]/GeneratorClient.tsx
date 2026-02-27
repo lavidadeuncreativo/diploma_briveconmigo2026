@@ -633,7 +633,7 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
             setErrorMsg("Ocurrió un error. Por favor intenta de nuevo.");
             setAppState("error");
         }
-    }, [tokenStr, fullName, company, selectedTemplate]);
+    }, [tokenStr, eventSlug, fullName, email, company, selectedTemplate]);
 
     // ─── UI States ──────────────────────────────────────────────────────────────
 
@@ -920,7 +920,10 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                                     type="text"
                                     placeholder="Ej. María García"
                                     value={fullName}
-                                    onChange={e => setFullName(e.target.value)}
+                                    onChange={e => {
+                                        setFullName(e.target.value);
+                                        if (nameError) setNameError("");
+                                    }}
                                     style={{
                                         padding: "12px 16px",
                                         borderRadius: 12,
@@ -980,7 +983,10 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                                             type="email"
                                             placeholder="Ej. maria@ejemplo.com"
                                             value={email}
-                                            onChange={e => setEmail(e.target.value)}
+                                            onChange={e => {
+                                                setEmail(e.target.value);
+                                                if (emailError) setEmailError("");
+                                            }}
                                             style={{
                                                 padding: "12px 16px",
                                                 borderRadius: 12,
