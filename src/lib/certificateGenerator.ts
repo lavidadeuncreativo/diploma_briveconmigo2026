@@ -38,28 +38,35 @@ async function saveFiles(
     pngBuffer: Buffer,
     pdfBuffer: Buffer
 ): Promise<{ pngUrl: string; pdfUrl: string }> {
-    if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
-        // Vercel Blob in production
-        const { put } = await import("@vercel/blob");
-        const [png, pdf] = await Promise.all([
-            put(`certificates/${certificateId}.png`, pngBuffer, {
-                access: "public",
-                contentType: "image/png",
-            }),
-            put(`certificates/${certificateId}.pdf`, pdfBuffer, {
-                access: "public",
-                contentType: "application/pdf",
-            }),
-        ]);
-        return { pngUrl: png.url, pdfUrl: pdf.url };
+    if (isProduction) {
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            // Vercel Blob in production
+            const { put } = await import("@vercel/blob");
+            const [png, pdf] = await Promise.all([
+                put(`certificates/${certificateId}.png`, pngBuffer, {
+                    access: "public",
+                    contentType: "image/png",
+                }),
+                put(`certificates/${certificateId}.pdf`, pdfBuffer, {
+                    access: "public",
+                    contentType: "application/pdf",
+                }),
+            ]);
+            return { pngUrl: png.url, pdfUrl: pdf.url };
+        } else {
+            // In production but no Blob token - this is a configuration error
+            throw new Error("Vercel Blob token is missing. Please connect a Blob Store to your Vercel project (Settings -> Storage).");
+        }
     } else {
-        // Local filesystem fallback
+        // Local filesystem fallback (using /tmp for better compatibility even locally)
         const path = await import("path");
         const fs = await import("fs");
         const STORAGE_DIR = path.join(process.cwd(), "storage", "certificates");
+
         if (!fs.existsSync(STORAGE_DIR)) {
             fs.mkdirSync(STORAGE_DIR, { recursive: true });
         }
+
         const pngPath = path.join(STORAGE_DIR, `${certificateId}.png`);
         const pdfPath = path.join(STORAGE_DIR, `${certificateId}.pdf`);
         fs.writeFileSync(pngPath, pngBuffer);
