@@ -361,16 +361,14 @@ function ActionButtons({
             {/* Download row */}
             <div style={{ display: "flex", gap: 8 }}>
                 <ActionBtn
-                    href={result.pdfUrl}
-                    download
+                    href={`/api/download?url=${encodeURIComponent(result.pdfUrl)}&filename=diploma_${result.certificateId}.pdf`}
                     onClick={() => trackEvent("certificate_download_pdf")}
                     variant="primary"
                     icon="📄"
                     label="Descargar PDF"
                 />
                 <ActionBtn
-                    href={result.pngUrl}
-                    download
+                    href={`/api/download?url=${encodeURIComponent(result.pngUrl)}&filename=diploma_${result.certificateId}.png`}
                     onClick={() => trackEvent("certificate_download_png")}
                     variant="secondary"
                     icon="🖼️"
@@ -696,7 +694,7 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
         );
     }
 
-    if (appState === "already_generated" && result) {
+    if ((appState === "already_generated" || appState === "done") && result) {
         return (
             <div style={{
                 minHeight: "100vh",
@@ -707,8 +705,9 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                 padding: 24,
             }}>
                 <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
                     style={{
                         maxWidth: 540,
                         width: "100%",
@@ -716,15 +715,17 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                         border: "1px solid rgba(11,18,32,0.08)",
                         borderRadius: 24,
                         padding: "40px 36px",
+                        boxShadow: "0 20px 48px rgba(11,18,32,0.12)",
+                        textAlign: "center",
                     }}
                 >
                     <div style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 8,
-                        background: "rgba(46,229,157,0.10)",
-                        border: "1px solid rgba(46,229,157,0.25)",
-                        color: "#0a9c68",
+                        background: appState === "done" ? "rgba(46,229,157,0.10)" : "rgba(11,18,32,0.05)",
+                        border: appState === "done" ? "1px solid rgba(46,229,157,0.25)" : "1px solid rgba(11,18,32,0.1)",
+                        color: appState === "done" ? "#0a9c68" : "#0B1220",
                         padding: "6px 14px",
                         borderRadius: 100,
                         fontSize: 13,
@@ -732,25 +733,51 @@ export default function GeneratorClient({ eventSlug }: { eventSlug: string }) {
                         fontFamily: "'Space Grotesk', sans-serif",
                         marginBottom: 20,
                     }}>
-                        ✅ Diploma ya generado
+                        {appState === "done" ? "✨ ¡Diploma generado con éxito!" : "✅ Diploma ya generado"}
                     </div>
                     <h1 style={{
                         fontFamily: "'Space Grotesk', sans-serif",
-                        fontSize: 26,
+                        fontSize: 32,
                         fontWeight: 700,
                         color: "#0B1220",
-                        marginBottom: 8,
+                        marginBottom: 12,
+                        letterSpacing: "-0.5px",
                     }}>
-                        Tu diploma está listo
+                        ¡Felicidades!
                     </h1>
-                    <p style={{ color: "rgba(11,18,32,0.55)", fontSize: 14, marginBottom: 28, fontFamily: "'Inter', sans-serif" }}>
-                        {event?.title}
+                    <p style={{ color: "rgba(11,18,32,0.55)", fontSize: 15, marginBottom: 32, fontFamily: "'Inter', sans-serif", lineHeight: 1.5 }}>
+                        Tu diploma del evento <strong>{event?.title}</strong> ya está disponible. Descárgalo o compártelo en tus redes.
                     </p>
-                    {/* Preview */}
-                    <div style={{ borderRadius: 12, overflow: "hidden", marginBottom: 24, boxShadow: "0 8px 32px rgba(11,18,32,0.10)" }}>
+
+                    {/* Preview with nice glow */}
+                    <div style={{
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        marginBottom: 32,
+                        boxShadow: "0 12px 40px rgba(11,18,32,0.15)",
+                        border: "1px solid rgba(11,18,32,0.05)"
+                    }}>
                         <img src={result.pngUrl} alt="Tu diploma" style={{ width: "100%", display: "block" }} />
                     </div>
-                    <ActionButtons result={result} event={event!} onCopy={() => setToast("Copiado ✅")} />
+
+                    <ActionButtons result={result} event={event!} onCopy={() => setToast("Link copiado ✅")} />
+
+                    <button
+                        onClick={() => setAppState("ready")}
+                        style={{
+                            marginTop: 24,
+                            background: "transparent",
+                            color: "rgba(11,18,32,0.4)",
+                            border: "none",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            cursor: "pointer",
+                            fontFamily: "'Inter', sans-serif",
+                            textDecoration: "underline",
+                        }}
+                    >
+                        Volver al generador
+                    </button>
                 </motion.div>
                 {toast && <Toast message={toast} onDone={() => setToast("")} />}
             </div>
