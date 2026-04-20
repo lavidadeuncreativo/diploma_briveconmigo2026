@@ -1,13 +1,17 @@
-// src/lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Use standard PrismaClient for production (handled by Neon/Vercel)
+if (!process.env.DATABASE_URL) {
+  console.warn("DATABASE_URL is not defined in environment variables");
+}
+
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient();
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
