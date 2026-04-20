@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { attendees } = await req.json();
-    const { id } = await params;
+    const { id } = await context.params;
 
     // Bulk upsert would be ideal, but for now we'll do it in a transaction
     // to ensure basic data integrity.

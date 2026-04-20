@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 
 export async function POST(
   req: Request,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { name, email, token } = await req.json();
-    const { slug } = await params;
+    const { slug } = await context.params;
 
     // 1. Fetch Session
     const session = await prisma.session.findUnique({

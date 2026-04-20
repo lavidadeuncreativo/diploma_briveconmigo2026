@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import SessionLanding from "./SessionLanding";
 
-export default async function PublicSessionPage({ params }: { params: { slug: string } }) {
+export default async function PublicSessionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await prisma.session.findUnique({
     where: { slug: slug, active: true },
