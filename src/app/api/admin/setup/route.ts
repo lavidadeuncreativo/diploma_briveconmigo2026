@@ -14,12 +14,14 @@ export async function GET() {
       }, { status: 400 });
     }
 
+    const normalizedEmail = adminEmail.toLowerCase().trim();
+
     // Upsert the admin user
     const admin = await prisma.adminUser.upsert({
-      where: { email: adminEmail },
+      where: { email: normalizedEmail },
       update: { password: adminPassword },
       create: {
-        email: adminEmail,
+        email: normalizedEmail,
         password: adminPassword,
       }
     });
