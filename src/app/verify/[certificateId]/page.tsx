@@ -14,29 +14,44 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { certificateId } = await params;
     const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
 
-    const cert = await prisma.certificate.findUnique({
-        where: { id: certificateId },
-        include: { event: true },
+    const cert = await prisma.generatedCertificate.findUnique({
+        where: { id: certificateId || "" },
+        include: { session: true },
     });
 
     if (!cert) {
-        return { title: "Diploma no encontrado – Brivé" };
+        // Fallback for certificateId lookup if id is not matching
+        const certByCertId = await prisma.generatedCertificate.findUnique({
+          where: { certificateId: certificateId },
+          include: { session: true },
+        });
+        if (!certByCertId) return { title: "Diploma no encontrado – Brivé" };
+        
+        const pngUrl = certByCertId.pngUrl.startsWith("http") ? certByCertId.pngUrl : `${baseUrl}${certByCertId.pngUrl}`;
+        return {
+          title: `Diploma – ${certByCertId.name} | Brivé Conmigo 2026`,
+          description: `${certByCertId.name} completó: ${certByCertId.session.title} – Brivé Conmigo 2026`,
+          openGraph: {
+              title: `Diploma – ${certByCertId.name}`,
+              images: [{ url: pngUrl, width: 1600, height: 1130 }],
+          }
+        };
     }
 
-    const pngUrl = cert.pngPath.startsWith("http") ? cert.pngPath : `${baseUrl}${cert.pngPath}`;
+    const pngUrl = cert.pngUrl.startsWith("http") ? cert.pngUrl : `${baseUrl}${cert.pngUrl}`;
 
     return {
-        title: `Diploma – ${cert.fullName} | Brivé Conmigo 2026`,
-        description: `${cert.fullName} completó: ${cert.event.title} – Brivé Conmigo 2026`,
+        title: `Diploma – ${cert.name} | Brivé Conmigo 2026`,
+        description: `${cert.name} completó: ${cert.session.title} – Brivé Conmigo 2026`,
         openGraph: {
-            title: `Diploma – ${cert.fullName}`,
-            description: `Completó: ${cert.event.title} – Brivé Conmigo 2026`,
+            title: `Diploma – ${cert.name}`,
+            description: `Completó: ${cert.session.title} – Brivé Conmigo 2026`,
             images: [
                 {
                     url: pngUrl,
                     width: 1600,
                     height: 1130,
-                    alt: `Diploma de ${cert.fullName}`,
+                    alt: `Diploma de ${cert.name}`,
                 },
             ],
             type: "website",
@@ -44,8 +59,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         },
         twitter: {
             card: "summary_large_image",
-            title: `Diploma – ${cert.fullName}`,
-            description: `Completó: ${cert.event.title} – Brivé Conmigo 2026`,
+            title: `Diploma – ${cert.name}`,
+            description: `Completó: ${cert.session.title} – Brivé Conmigo 2026`,
             images: [pngUrl],
         },
     };
@@ -53,35 +68,40 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VerifyPage({ params }: Props) {
     const { certificateId } = await params;
-    const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
-
-    const cert = await prisma.certificate.findUnique({
+    
+    let cert = await prisma.generatedCertificate.findUnique({
         where: { id: certificateId },
-        include: { event: true },
+        include: { session: { include: { signer: true } } },
     });
+
+    if (!cert) {
+      cert = await prisma.generatedCertificate.findUnique({
+        where: { certificateId: certificateId },
+        include: { session: { include: { signer: true } } },
+      });
+    }
 
     if (!cert) {
         notFound();
     }
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const data = {
         id: cert.id,
-        fullName: cert.fullName,
-        company: cert.company,
-        template: cert.template,
-        pdfUrl: cert.pdfPath,
-        pngUrl: cert.pngPath,
+        fullName: cert.name,
+        template: "Session Template",
+        pdfUrl: cert.pdfUrl,
+        pngUrl: cert.pngUrl,
         createdAt: cert.createdAt.toISOString(),
-        event: {
-            id: cert.event.id,
-            slug: cert.event.slug,
-            title: cert.event.title,
-            subtitle: cert.event.subtitle,
-            date: cert.event.date,
-            hours: cert.event.hours,
-            instructor: cert.event.instructor,
-        },
         verifyUrl: `${baseUrl}/verify/${cert.id}`,
+        event: {
+            id: cert.session.id,
+            slug: cert.session.slug,
+            title: cert.session.title,
+            subtitle: cert.session.subtitle,
+            date: cert.session.date,
+            instructor: cert.session.signer.name,
+        },
     };
 
     return <VerifyClient data={data} />;
