@@ -1,0 +1,7 @@
+{
+    "functions": {
+        "src/app/api/certificate/generate/route.ts": {
+            "maxDuration": 60
+        }
+    }
+}

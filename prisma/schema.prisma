@@ -1,0 +1,110 @@
+// This is your Prisma schema file
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id              String      @id @default(cuid())
+  slug            String      @unique
+  title           String
+  subtitle        String?
+  date            DateTime
+  duration        String?
+  solution        String?     // Category
+  primaryColor    String      @default("#000000")
+  secondaryColor  String?     @default("#e2e8f0")
+  active          Boolean     @default(true)
+  validationMode  String      @default("FREE") // FREE | ATTENDEE_LIST | TOKEN
+  copySharing     String?
+  
+  templateId      String
+  template        DiplomaTemplate @relation(fields: [templateId], references: [id])
+  
+  signerId        String
+  signer          Signer          @relation(fields: [signerId], references: [id])
+  
+  attendees       SessionAttendee[]
+  certificates    GeneratedCertificate[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model DiplomaTemplate {
+  id              String    @id @default(cuid())
+  name            String
+  backgroundImage String    // Vercel Blob URL
+  layoutConfig    String    // SQLite uses String instead of Json (or just Store as text)
+  sessions        Session[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Signer {
+  id        String    @id @default(cuid())
+  name      String
+  position  String
+  signature String    // Vercel Blob URL
+  logo      String?   // Optional per-signer logo
+  sessions  Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SessionAttendee {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  email     String
+  name      String?
+  token     String?  @unique
+  validated Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@unique([sessionId, email])
+}
+
+model GeneratedCertificate {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id])
+  name          String
+  email         String
+  pdfUrl        String
+  pngUrl        String
+  certificateId String   @unique @default(cuid())
+  createdAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String
+  entity      String
+  entityId    String
+  details     String?
+  createdAt   DateTime @default(now())
+}
+
+// Keep Legacy models for a while if needed, or delete if fresh start.
+// Given the prompt "Migración sin romper lo existente", I'll keep them as optional/deprecated for now
+// But the user said "Crear y migrar el schema actual". 
+// I'll leave the old ones commented out for reference during code migration if needed, 
+// or just proceed with the new ones. I'll omit them to keep it clean, as I will refactor the code to match.
