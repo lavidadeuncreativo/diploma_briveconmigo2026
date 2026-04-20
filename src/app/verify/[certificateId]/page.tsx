@@ -99,7 +99,7 @@ export default async function VerifyPage({ params }: Props) {
             slug: cert.session.slug,
             title: cert.session.title,
             subtitle: cert.session.subtitle,
-            date: cert.session.date,
+            date: cert.session.date.toISOString(),
             instructor: cert.session.signer.name,
         },
     };
