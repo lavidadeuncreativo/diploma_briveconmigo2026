@@ -3,6 +3,8 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import SessionForm from "./SessionForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewSessionPage() {
   const templates = await prisma.diplomaTemplate.findMany();
   const signers = await prisma.signer.findMany();

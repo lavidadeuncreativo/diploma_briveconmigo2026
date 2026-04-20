@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import SessionLanding from "./SessionLanding";
 
+export const dynamic = "force-dynamic";
+
 export default async function PublicSessionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await prisma.session.findUnique({

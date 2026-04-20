@@ -3,6 +3,8 @@ import { ChevronLeft, Users, Download, Trash2, CheckCircle, XCircle } from "luci
 import Link from "next/link";
 import AttendeeUpload from "./AttendeeUpload";
 
+export const dynamic = "force-dynamic";
+
 export default async function SessionDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await prisma.session.findUnique({

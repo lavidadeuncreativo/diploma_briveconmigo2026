@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, User, Trash2 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function SignersPage() {
   const signers = await prisma.signer.findMany({
     orderBy: { createdAt: "desc" },

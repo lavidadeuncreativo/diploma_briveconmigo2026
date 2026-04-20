@@ -1,93 +1,97 @@
 import { prisma } from "@/lib/prisma";
+import { PlusCircle, Calendar, Users, ArrowRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { Plus, Calendar, Settings, Power, PowerOff } from "lucide-react";
 
-export default async function SessionsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminSessionsPage() {
   const sessions = await prisma.session.findMany({
+    orderBy: { date: "desc" },
     include: {
-      template: true,
-      signer: true,
       _count: {
         select: { attendees: true, certificates: true }
       }
-    },
-    orderBy: { date: "desc" },
+    }
   });
 
   return (
-    <div className="space-y-8 font-[family-name:var(--font-geist-sans)]">
+    <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Sessions & Webinars</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage your events, attendee lists, and diploma status.</p>
+          <h1 className="text-3xl font-bold text-white">Sessions</h1>
+          <p className="text-slate-400 mt-1">Manage your webinars and events.</p>
         </div>
         <Link 
           href="/admin/sessions/new" 
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20 font-bold"
         >
-          <Plus className="w-4 h-4" />
+          <PlusCircle className="w-5 h-5" />
           Create Session
         </Link>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-200">
-              <th className="px-8 py-5">Session Info</th>
-              <th className="px-8 py-5">Validation</th>
-              <th className="px-8 py-5">Attendees</th>
-              <th className="px-8 py-5">Diplomas</th>
-              <th className="px-8 py-5">Status</th>
-              <th className="px-8 py-5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {sessions.map((session) => (
-              <tr key={session.id} className="hover:bg-slate-50/50 transition-all text-slate-700">
-                <td className="px-8 py-6">
-                  <div className="font-bold text-slate-900 text-base">{session.title}</div>
-                  <div className="text-sm text-slate-400 mt-0.5 font-medium">{new Date(session.date).toLocaleDateString()} • {session.slug}</div>
-                </td>
-                <td className="px-8 py-6">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    session.validationMode === "FREE" ? "bg-green-50 text-green-600 border border-green-100" :
-                    session.validationMode === "ATTENDEE_LIST" ? "bg-blue-50 text-blue-600 border border-blue-100" :
-                    "bg-purple-50 text-purple-600 border border-purple-100"
-                  }`}>
-                    {session.validationMode}
-                  </span>
-                </td>
-                <td className="px-8 py-6 font-semibold">{session._count.attendees}</td>
-                <td className="px-8 py-6 font-semibold">{session._count.certificates}</td>
-                <td className="px-8 py-6">
-                  {session.active ? (
-                    <span className="flex items-center gap-2 text-green-600 text-xs font-bold">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Active
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2 text-slate-400 text-xs font-bold">
-                      <div className="w-2 h-2 rounded-full bg-slate-300" /> Inactive
-                    </span>
-                  )}
-                </td>
-                <td className="px-8 py-6 text-right">
-                  <Link href={`/admin/sessions/${session.id}`} className="inline-flex items-center justify-center p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                    <Settings className="w-5 h-5" />
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {sessions.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-8 py-12 text-center text-slate-400 font-medium italic">
-                  No sessions created yet. Create one to start generating diplomas.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {sessions.map((session) => (
+          <div 
+            key={session.id} 
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all group"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-slate-800 rounded-xl text-blue-400">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div className="flex gap-2">
+                <Link 
+                  href={`/s/${session.slug}`} 
+                  target="_blank"
+                  className="p-2 text-slate-500 hover:text-blue-400 transition-colors"
+                  title="View Landing Page"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+                <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${session.active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                  {session.active ? 'Active' : 'Inactive'}
+                </div>
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
+              {session.title}
+            </h3>
+            <p className="text-slate-500 text-sm mb-6 line-clamp-2">{session.subtitle}</p>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-slate-800/50 rounded-xl p-3">
+                <div className="text-slate-500 text-[10px] font-bold uppercase mb-1">Attendees</div>
+                <div className="text-white font-bold flex items-center gap-2">
+                  <Users className="w-3 h-3 text-slate-400" />
+                  {session._count.attendees}
+                </div>
+              </div>
+              <div className="bg-slate-800/50 rounded-xl p-3">
+                <div className="text-slate-500 text-[10px] font-bold uppercase mb-1">Generated</div>
+                <div className="text-white font-bold">
+                  {session._count.certificates}
+                </div>
+              </div>
+            </div>
+
+            <Link 
+              href={`/admin/sessions/${session.id}`}
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm"
+            >
+              Manage Session
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        ))}
       </div>
+
+      {sessions.length === 0 && (
+        <div className="bg-slate-900/50 border-2 border-dashed border-slate-800 rounded-3xl p-16 text-center">
+          <p className="text-slate-500 italic">No sessions found. Create your first one to get started!</p>
+        </div>
+      )}
     </div>
   );
 }
