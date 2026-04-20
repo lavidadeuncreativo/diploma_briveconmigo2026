@@ -12,6 +12,13 @@ export interface DynamicTemplateData {
   layoutConfig: any;
 }
 
+export function renderDynamicTemplate(data: DynamicTemplateData) {
+  const { 
+    fullName, sessionTitle, date, instructorName, 
+    instructorPosition, signatureUrl, backgroundImage, 
+    qrDataUrl, layoutConfig 
+  } = data;
+
   const layout = typeof layoutConfig === 'string' ? JSON.parse(layoutConfig) : (layoutConfig || {});
 
   // Default positions if layoutConfig is missing some fields
@@ -83,7 +90,7 @@ export interface DynamicTemplateData {
                 max-width: 200px;
                 max-height: 100px;
                 margin-bottom: 10px;
-                mix-blend-multiply;
+                mix-blend-mode: multiply;
             }
             .signer-info {
                 font-size: 18px;
